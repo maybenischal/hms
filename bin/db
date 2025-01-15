@@ -1,0 +1,181 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__ . '/../bootstrap.php';
+
+$command = $argv[1] ?? '';
+
+switch ($command) {
+    case 'create':
+        // Disable foreign key checks temporarily
+        $db->query("SET FOREIGN_KEY_CHECKS = 0");
+
+        // Drop all tables
+        $db->query("DROP TABLE IF EXISTS patients");
+        $db->query("DROP TABLE IF EXISTS employees");
+        $db->query("DROP TABLE IF EXISTS users");
+
+        // Re-enable foreign key checks
+        $db->query("SET FOREIGN_KEY_CHECKS = 1");
+
+        // Create users table first (as it's referenced by others)
+        $db->query("CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_name VARCHAR(255) NOT NULL UNIQUE,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            user_type ENUM('INTERNAL', 'EXTERNAL') NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        // Create employees table
+        $db->query("CREATE TABLE IF NOT EXISTS employees (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            employee_type ENUM('DOCTOR', 'STAFF') NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )");
+
+        // Create patients table
+        $db->query("CREATE TABLE IF NOT EXISTS patients (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            date_of_birth DATE,
+            gender ENUM('M', 'F', 'O'),
+            phone VARCHAR(20),
+            address TEXT,
+            blood_group VARCHAR(5),
+            age INT,
+            height DECIMAL(5,2),
+            weight DECIMAL(5,2),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )");
+
+        // Create admin user first
+        $adminUserSql = "INSERT INTO users (user_name, email, password, user_type) 
+                       VALUES (?, ?, ?, 'INTERNAL')";
+        $adminPassword = password_hash('admin123', PASSWORD_DEFAULT);
+        $db->query($adminUserSql, ['admin', 'admin@hospital.com', $adminPassword]);
+        $adminUserId = $db->lastInsertId();
+
+        // Create doctor users
+        $doctorUsers = [
+            ['dr.smith', 'dr.smith@hospital.com', 'Dr. John Smith'],
+            ['dr.jones', 'dr.jones@hospital.com', 'Dr. Sarah Jones'],
+            ['dr.wilson', 'dr.wilson@hospital.com', 'Dr. Michael Wilson']
+        ];
+
+        $doctorUserIds = [];
+        foreach ($doctorUsers as $doctor) {
+            $doctorUserSql = "INSERT INTO users (user_name, email, password, user_type) 
+                            VALUES (?, ?, ?, 'INTERNAL')";
+            $doctorPassword = password_hash('doctor123', PASSWORD_DEFAULT);
+            $db->query($doctorUserSql, [$doctor[0], $doctor[1], $doctorPassword]);
+            $doctorUserIds[] = $db->lastInsertId();
+        }
+
+        // Create admin employee record
+        $adminEmployeeSql = "INSERT INTO employees (user_id, name, employee_type) 
+                           VALUES (?, 'System Admin', 'DOCTOR')";
+        $db->query($adminEmployeeSql, [$adminUserId]);
+
+        // Create doctor employee records
+        foreach ($doctorUserIds as $index => $userId) {
+            $doctorEmployeeSql = "INSERT INTO employees (user_id, name, employee_type) 
+                                 VALUES (?, ?, 'DOCTOR')";
+            $db->query($doctorEmployeeSql, [$userId, $doctorUsers[$index][2]]);
+        }
+
+        // Create test patients
+        $patientUsers = [
+            ['john.doe', 'john.doe@email.com', 'John Doe'],
+            ['jane.smith', 'jane.smith@email.com', 'Jane Smith'],
+            ['bob.wilson', 'bob.wilson@email.com', 'Bob Wilson']
+        ];
+
+        foreach ($patientUsers as $patient) {
+            // Create user account for patient
+            $patientUserSql = "INSERT INTO users (user_name, email, password, user_type) 
+                               VALUES (?, ?, ?, 'EXTERNAL')";
+            $patientPassword = password_hash('patient123', PASSWORD_DEFAULT);
+            $db->query($patientUserSql, [$patient[0], $patient[1], $patientPassword]);
+            $userId = $db->lastInsertId();
+
+            // Create patient record
+            $patientSql = "INSERT INTO patients (user_id, name, date_of_birth, gender, phone, address) 
+                           VALUES (?, ?, ?, ?, ?, ?)";
+            $db->query($patientSql, [
+                $userId,
+                $patient[2],
+                '1990-01-01',
+                'M',
+                '1234567890',
+                '123 Sample St, City'
+            ]);
+        }
+
+        // Add after the existing table creations
+        $db->query("CREATE TABLE IF NOT EXISTS doctor_assignments (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            patient_id INT NOT NULL,
+            doctor_id INT NOT NULL,
+            assigned_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            end_date TIMESTAMP NULL,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (doctor_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (assigned_by) REFERENCES employees(id) ON DELETE CASCADE
+        )");
+
+        // Add some sample doctor assignments
+        $sampleAssignments = [
+            [1, 2, 1], // patient_id 1, doctor_id 2, assigned_by admin(1)
+            [2, 3, 1], // patient_id 2, doctor_id 3, assigned_by admin(1)
+        ];
+
+        foreach ($sampleAssignments as $assignment) {
+            $db->query(
+                "INSERT INTO doctor_assignments (patient_id, doctor_id, assigned_by) VALUES (?, ?, ?)",
+                $assignment
+            );
+        }
+
+        echo "Database tables created successfully\n";
+        break;
+        
+    case 'drop':
+        // Drop tables in correct order (child tables first)
+        $tables = [
+            'patients',
+            'employees',
+            'users'
+        ];
+
+        // Disable foreign key checks temporarily
+        $db->query("SET FOREIGN_KEY_CHECKS = 0");
+
+        // Drop tables
+        foreach ($tables as $table) {
+            try {
+                $db->query("DROP TABLE IF EXISTS $table");
+            } catch (Exception $e) {
+                echo "Error dropping table $table: " . $e->getMessage() . "\n";
+            }
+        }
+
+        // Re-enable foreign key checks
+        $db->query("SET FOREIGN_KEY_CHECKS = 1");
+
+        echo "Database tables dropped successfully\n";
+        break;
+        
+    default:
+        echo "Unknown command. Available commands: create, drop\n";
+} 

@@ -33,6 +33,9 @@ class User extends Auditable {
     #[ORM\Column(type: "string", enumType: UserType::class)]
     private $userType;
 
+    #[ORM\Column(type: 'string', unique: true)]
+    private string $email;
+
 
     public function setId(int $id): void
     {
@@ -72,5 +75,15 @@ class User extends Auditable {
     {
         $this->userType = $userType;
         return $this;
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(string $email): void
+    {
+        $this->email = $email;
     }
 }

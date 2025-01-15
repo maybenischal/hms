@@ -1,28 +1,15 @@
 <?php
-// bootstrap.php
-use Doctrine\DBAL\DriverManager;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\ORMSetup;
 
 require_once "vendor/autoload.php";
+require_once __DIR__ . "/helpers.php";
 
-// Create a simple "default" Doctrine ORM configuration for Attributes
-$config = ORMSetup::createAttributeMetadataConfiguration(
-    paths: [__DIR__ . '/src'],
-    isDevMode: true,
-);
+use App\Database\Connection;
 
-$connectionParams = [
+$config = [
     'dbname' => 'hms_db',
-    'user' => 'root',
+    'user' => 'root', 
     'password' => 'password',
-    'host' => '127.0.0.1',
-    'driver' => 'pdo_mysql', // Or other driver
+    'host' => '127.0.0.1'
 ];
-$conn = DriverManager::getConnection($connectionParams);
 
-
-
-// obtaining the entity manager
-$entityManager = new EntityManager($conn, $config);
-$queryBuilder = $conn->createQueryBuilder();
+$db = new Connection($config);

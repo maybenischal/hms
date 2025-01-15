@@ -12,6 +12,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/devture/dbal.git",
+                
                 "reference": "e2538d13baf9220fc388a48596acd176cd2bb42f"
             },
             "dist": {

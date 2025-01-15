@@ -13,6 +13,8 @@ php bin/doctrine orm:schema-tool:update --force --dump-sql
 
 php bin/doctrine orm:schema-tool:create --dump-sql
 
+### running mysql
+docker start mysql-docker
 
 ### running application
 php -S 0.0.0.0:8080 -t ./
