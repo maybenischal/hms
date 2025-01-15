@@ -1,0 +1,18 @@
+### drop 
+php bin/doctrine orm:schema-tool:drop --force
+
+### Create 
+php bin/doctrine orm:schema-tool:create
+
+### Update
+php bin/doctrine orm:schema-tool:update --force
+
+### print ddl statements on the screen
+php bin/doctrine orm:schema-tool:update --force --dump-sql
+
+
+php bin/doctrine orm:schema-tool:create --dump-sql
+
+
+### running application
+php -S 0.0.0.0:8080 -t ./

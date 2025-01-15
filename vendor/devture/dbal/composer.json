@@ -1,0 +1,26 @@
+{
+    "name": "devture/dbal",
+    "type": "library",
+    "description": "Tiny database abstraction layer for MongoDB (doctrine/mongodb) and relational databases (doctrine/dbal)",
+    "keywords": ["dbal", "database", "mongodb", "relational", "doctrine"],
+    "license": "BSD",
+    "authors": [
+        {
+            "name": "Slavi Pantaleev",
+            "email": "s.pantaleev@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "voku/portable-utf8": "^3.1"
+    },
+    "suggest": {
+		"doctrine/mongodb": "For using with MongoDB",
+        "doctrine/dbal": "For using with relational databases"
+    },
+    "autoload": {
+        "psr-0": {
+            "Devture\\Component\\DBAL\\": "src/"
+        }
+    }
+}

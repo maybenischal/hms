@@ -1,0 +1,4 @@
+services:
+    App\EventListener\UpdateTimestampListener:
+        tags:
+            - { name: doctrine.event_subscriber }
